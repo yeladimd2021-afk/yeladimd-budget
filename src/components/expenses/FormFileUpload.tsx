@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useState } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { useDropzone, FileRejection } from 'react-dropzone';
 import { supabase } from '@/lib/supabase/client';
 import { AttachmentFile } from '@/types';
 import { formatFileSize, generateId } from '@/lib/utils';
@@ -85,7 +85,7 @@ export function FormFileUpload({
 
   // ─── Dropzone handler ────────────────────────────────────────────────────────
   const onDrop = useCallback(
-    async (accepted: File[], rejected: { file: File; errors: { message: string }[] }[]) => {
+    async (accepted: File[], rejected: FileRejection[]) => {
       setUploadError('');
 
       if (rejected.length > 0) {
