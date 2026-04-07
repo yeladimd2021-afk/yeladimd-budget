@@ -20,11 +20,22 @@ const schema = z.object({
   amount: z.number({ invalid_type_error: 'יש להזין סכום' }).positive('הסכום חייב להיות חיובי'),
   date: z.string().min(1, 'חובה לבחור תאריך'),
   paidBy: z.string().min(2, 'חובה להזין שם משלם'),
-  paymentMethod: z.enum(['העברה בנקאית', 'מזומן', 'כרטיס אשראי', "צ'ק", 'אחר']),
+  paymentMethod: z.enum([
+    'העברה בנקאית',
+    'מזומן',
+    'כרטיס אשראי',
+    "צ'ק",
+    'אחר',
+    'הוחזר לתקציב המחלקתי',
+    'הוחזר למשלם',
+    'הוחזר בפייבוקס',
+  ]),
   vendor: z.string().optional().default(''),
   invoiceNumber: z.string().optional().default(''),
   reimbursementStatus: z.enum(['ממתין', 'הוחזר', 'לא רלוונטי']),
   reimbursementDate: z.string().optional().default(''),
+  returnDateToPayer: z.string().optional().default(''),
+  returnDateToBudget: z.string().optional().default(''),
   externalLink: z.string().url('קישור לא תקין').optional().or(z.literal('')).default(''),
   notes: z.string().optional().default(''),
 });
@@ -80,12 +91,15 @@ export function ExpenseForm({
       invoiceNumber: defaultValues?.invoiceNumber || '',
       reimbursementStatus: defaultValues?.reimbursementStatus || 'לא רלוונטי',
       reimbursementDate: defaultValues?.reimbursementDate || '',
+      returnDateToPayer: defaultValues?.returnDateToPayer || '',
+      returnDateToBudget: defaultValues?.returnDateToBudget || '',
       externalLink: defaultValues?.externalLink || '',
       notes: defaultValues?.notes || '',
     },
   });
 
-  const reimbStatus = watch('reimbursementStatus');
+  const reimbStatus    = watch('reimbursementStatus');
+  const paymentMethod  = watch('paymentMethod');
   const activeCategories = categories.filter(c => c.isActive);
 
   // Merge validated form values with attachment state, then call parent onSubmit
@@ -201,6 +215,22 @@ export function ExpenseForm({
           />
         )}
       </div>
+
+      {/* ── Row 7b: Bank-transfer return dates (conditional) ── */}
+      {paymentMethod === 'העברה בנקאית' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Input
+            label="תאריך החזרה למשלם"
+            type="date"
+            {...register('returnDateToPayer')}
+          />
+          <Input
+            label="תאריך החזרה לתקציב המחלקתי"
+            type="date"
+            {...register('returnDateToBudget')}
+          />
+        </div>
+      )}
 
       {/* ── Row 8: External link ── */}
       <Input

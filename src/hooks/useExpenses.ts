@@ -27,6 +27,8 @@ interface ExpenseRow {
   invoice_number: string;
   reimbursement_status: string;
   reimbursement_date: string | null;
+  return_date_to_payer: string | null;
+  return_date_to_budget: string | null;
   external_link: string;
   notes: string;
   attachments: AttachmentFile[];
@@ -53,6 +55,8 @@ function mapExpense(row: ExpenseRow): Expense {
     invoiceNumber: row.invoice_number ?? '',
     reimbursementStatus: row.reimbursement_status as Expense['reimbursementStatus'],
     reimbursementDate: row.reimbursement_date ?? undefined,
+    returnDateToPayer: row.return_date_to_payer ?? undefined,
+    returnDateToBudget: row.return_date_to_budget ?? undefined,
     externalLink: row.external_link ?? '',
     notes: row.notes ?? '',
     attachments: Array.isArray(row.attachments) ? row.attachments : [],
@@ -133,6 +137,8 @@ export function useExpenses(yearId?: string) {
           invoice_number: formData.invoiceNumber ?? '',
           reimbursement_status: formData.reimbursementStatus,
           reimbursement_date: formData.reimbursementDate || null,
+          return_date_to_payer: formData.returnDateToPayer || null,
+          return_date_to_budget: formData.returnDateToBudget || null,
           external_link: formData.externalLink ?? '',
           notes: formData.notes ?? '',
           attachments: formData.attachments ?? [],
@@ -174,6 +180,8 @@ export function useExpenses(yearId?: string) {
       if (formData.invoiceNumber !== undefined) updates.invoice_number = formData.invoiceNumber;
       if (formData.reimbursementStatus !== undefined) updates.reimbursement_status = formData.reimbursementStatus;
       if (formData.reimbursementDate !== undefined) updates.reimbursement_date = formData.reimbursementDate || null;
+      if (formData.returnDateToPayer !== undefined) updates.return_date_to_payer = formData.returnDateToPayer || null;
+      if (formData.returnDateToBudget !== undefined) updates.return_date_to_budget = formData.returnDateToBudget || null;
       if (formData.externalLink !== undefined) updates.external_link = formData.externalLink;
       if (formData.notes !== undefined) updates.notes = formData.notes;
       if (formData.attachments !== undefined) updates.attachments = formData.attachments;

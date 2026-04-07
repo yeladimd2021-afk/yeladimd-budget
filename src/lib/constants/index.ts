@@ -28,6 +28,9 @@ export const PAYMENT_METHODS: PaymentMethod[] = [
   'כרטיס אשראי',
   "צ'ק",
   'אחר',
+  'הוחזר לתקציב המחלקתי',
+  'הוחזר למשלם',
+  'הוחזר בפייבוקס',
 ];
 
 export const REIMBURSEMENT_STATUSES: ReimbursementStatus[] = [

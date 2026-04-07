@@ -38,7 +38,15 @@ export interface Category {
 
 // ─── Expenses ──────────────────────────────────────────────────────────────────
 
-export type PaymentMethod = 'העברה בנקאית' | 'מזומן' | 'כרטיס אשראי' | 'צ\'ק' | 'אחר';
+export type PaymentMethod =
+  | 'העברה בנקאית'
+  | 'מזומן'
+  | 'כרטיס אשראי'
+  | "צ'ק"
+  | 'אחר'
+  | 'הוחזר לתקציב המחלקתי'
+  | 'הוחזר למשלם'
+  | 'הוחזר בפייבוקס';
 
 export type ReimbursementStatus = 'ממתין' | 'הוחזר' | 'לא רלוונטי';
 
@@ -69,6 +77,8 @@ export interface Expense {
   invoiceNumber?: string;
   reimbursementStatus: ReimbursementStatus;
   reimbursementDate?: string;
+  returnDateToPayer?: string;          // תאריך החזרה למשלם
+  returnDateToBudget?: string;         // תאריך החזרה לתקציב המחלקתי
   externalLink?: string;
   notes?: string;
   attachments: AttachmentFile[];
@@ -93,6 +103,8 @@ export interface ExpenseFormData {
   invoiceNumber?: string;
   reimbursementStatus: ReimbursementStatus;
   reimbursementDate?: string;
+  returnDateToPayer?: string;          // תאריך החזרה למשלם
+  returnDateToBudget?: string;         // תאריך החזרה לתקציב המחלקתי
   externalLink?: string;
   notes?: string;
   // File attachments — managed outside the zod schema, merged on submit
