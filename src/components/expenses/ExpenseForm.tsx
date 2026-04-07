@@ -17,7 +17,7 @@ const schema = z.object({
   categoryId: z.string().min(1, 'חובה לבחור קטגוריה'),
   title: z.string().min(2, 'חובה להזין תיאור (לפחות 2 תווים)'),
   description: z.string().optional().default(''),
-  amount: z.coerce.number().positive('הסכום חייב להיות חיובי'),
+  amount: z.number({ invalid_type_error: 'יש להזין סכום' }).positive('הסכום חייב להיות חיובי'),
   date: z.string().min(1, 'חובה לבחור תאריך'),
   paidBy: z.string().min(2, 'חובה להזין שם משלם'),
   paymentMethod: z.enum(['העברה בנקאית', 'מזומן', 'כרטיס אשראי', "צ'ק", 'אחר']),
@@ -72,7 +72,7 @@ export function ExpenseForm({
       categoryId: defaultValues?.categoryId || '',
       title: defaultValues?.title || '',
       description: defaultValues?.description || '',
-      amount: defaultValues?.amount || ('' as unknown as number),
+      amount: defaultValues?.amount ?? ('' as unknown as number),
       date: defaultValues?.date || new Date().toISOString().split('T')[0],
       paidBy: defaultValues?.paidBy || '',
       paymentMethod: defaultValues?.paymentMethod || 'העברה בנקאית',
@@ -94,7 +94,7 @@ export function ExpenseForm({
   };
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-5">
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-5" noValidate>
 
       {/* ── Row 1: Year + Category ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -143,7 +143,7 @@ export function ExpenseForm({
           step="0.01"
           placeholder="0.00"
           error={errors.amount?.message}
-          {...register('amount')}
+          {...register('amount', { valueAsNumber: true })}
         />
         <Input
           label="תאריך"
