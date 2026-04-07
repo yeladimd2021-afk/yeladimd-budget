@@ -19,10 +19,15 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     if (!loading && !user) {
       router.replace('/login');
     }
-  }, [user, loading, router]);
+    // If auth is resolved, user exists, but profile is missing → sign-out state; redirect to login
+    if (!loading && user && profile === null) {
+      router.replace('/login');
+    }
+  }, [user, profile, loading, router]);
 
   if (loading) return <PageLoader />;
-  if (!user || !profile) return <PageLoader />;
+  if (!user) return <PageLoader />; // redirect in flight
+  if (!profile) return <PageLoader />; // redirect in flight
 
   if (requiredRole) {
     const roleHierarchy: Record<UserRole, number> = { admin: 3, editor: 2, viewer: 1 };

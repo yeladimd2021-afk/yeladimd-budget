@@ -42,6 +42,14 @@ function mapProfile(row: UserRow): UserProfile {
   };
 }
 
+// Wraps a promise with a timeout — if it takes too long, resolves to null
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+  return Promise.race([
+    promise,
+    new Promise<null>(resolve => setTimeout(() => resolve(null), ms)),
+  ]);
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -49,53 +57,82 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = useCallback(async (uid: string): Promise<UserProfile | null> => {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', uid)
-      .single();
-
-    if (error || !data) return null;
-    return mapProfile(data as UserRow);
+    try {
+      const query = supabase.from('users').select('*').eq('id', uid).single();
+      const result = await withTimeout(Promise.resolve(query), 5000);
+      if (!result || result.error || !result.data) return null;
+      return mapProfile(result.data as UserRow);
+    } catch {
+      return null;
+    }
   }, []);
 
   const updateLastLogin = useCallback(async (uid: string) => {
-    await supabase
-      .from('users')
-      .update({ last_login_at: new Date().toISOString() })
-      .eq('id', uid);
+    try {
+      await supabase
+        .from('users')
+        .update({ last_login_at: new Date().toISOString() })
+        .eq('id', uid);
+    } catch {
+      // non-critical, ignore
+    }
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
+    // Safety net: never stay loading more than 8 seconds
+    const safetyTimer = setTimeout(() => {
+      if (!cancelled) setLoading(false);
+    }, 8000);
+
     // Get initial session
     supabase.auth.getSession().then(async ({ data: { session: s } }) => {
+      if (cancelled) return;
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
         const p = await fetchProfile(s.user.id);
-        setProfile(p);
-        if (p) updateLastLogin(s.user.id);
+        if (!cancelled) {
+          setProfile(p);
+          if (p) updateLastLogin(s.user.id);
+        }
       }
-      setLoading(false);
+      if (!cancelled) {
+        clearTimeout(safetyTimer);
+        setLoading(false);
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        clearTimeout(safetyTimer);
+        setLoading(false);
+      }
     });
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, s) => {
+        if (cancelled) return;
         setSession(s);
         setUser(s?.user ?? null);
         if (s?.user) {
           const p = await fetchProfile(s.user.id);
-          setProfile(p);
-          if (p) updateLastLogin(s.user.id);
+          if (!cancelled) {
+            setProfile(p);
+            if (p) updateLastLogin(s.user.id);
+          }
         } else {
           setProfile(null);
         }
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      clearTimeout(safetyTimer);
+      subscription.unsubscribe();
+    };
   }, [fetchProfile, updateLastLogin]);
 
   const signIn = useCallback(async (email: string, password: string): Promise<void> => {
