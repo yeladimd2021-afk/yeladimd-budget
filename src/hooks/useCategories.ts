@@ -25,15 +25,20 @@ function mapCategory(row: CategoryRow): Category {
   };
 }
 
+// Module-level cache — survives component unmounts so navigating back is instant
+let categoriesCache: Category[] | null = null;
+
 export function useCategories() {
   const { user } = useAuth();
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Start with cached data so the page renders immediately on re-visit
+  const [categories, setCategories] = useState<Category[]>(categoriesCache ?? []);
+  const [loading, setLoading] = useState(categoriesCache === null);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchCategories = useCallback(async () => {
     if (!user) { setLoading(false); return; }
-    setLoading(true);
+    // Only show spinner when there is no cached data yet
+    if (categoriesCache === null) setLoading(true);
     const { data, error: err } = await supabase
       .from('categories')
       .select('*')
@@ -42,7 +47,9 @@ export function useCategories() {
     if (err) {
       setError(new Error(err.message));
     } else {
-      setCategories((data as CategoryRow[]).map(mapCategory));
+      const mapped = (data as CategoryRow[]).map(mapCategory);
+      categoriesCache = mapped;
+      setCategories(mapped);
       setError(null);
     }
     setLoading(false);

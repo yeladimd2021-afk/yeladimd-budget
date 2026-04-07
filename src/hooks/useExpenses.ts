@@ -67,10 +67,18 @@ function mapExpense(row: ExpenseRow): Expense {
 
 // ─── useExpenses hook ─────────────────────────────────────────────────────────
 
+// Module-level cache keyed by yearId — survives component unmounts
+const expensesCache = new Map<string, Expense[]>();
+
 export function useExpenses(yearId?: string) {
   const { user, profile } = useAuth();
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Start with cached data for this year so the page renders immediately on re-visit
+  const [expenses, setExpenses] = useState<Expense[]>(
+    yearId ? (expensesCache.get(yearId) ?? []) : []
+  );
+  const [loading, setLoading] = useState(
+    yearId ? !expensesCache.has(yearId) : false
+  );
   const [error, setError] = useState<Error | null>(null);
   const fetchCount = useRef(0);
 
@@ -80,7 +88,8 @@ export function useExpenses(yearId?: string) {
       return;
     }
     const token = ++fetchCount.current;
-    setLoading(true);
+    // Only show spinner when there is no cached data for this year yet
+    if (!expensesCache.has(yearId)) setLoading(true);
     const { data, error: err } = await supabase
       .from('expenses')
       .select('*')
@@ -91,7 +100,9 @@ export function useExpenses(yearId?: string) {
     if (err) {
       setError(new Error(err.message));
     } else {
-      setExpenses((data as ExpenseRow[]).map(mapExpense));
+      const mapped = (data as ExpenseRow[]).map(mapExpense);
+      expensesCache.set(yearId, mapped);
+      setExpenses(mapped);
       setError(null);
     }
     setLoading(false);
@@ -136,10 +147,11 @@ export function useExpenses(yearId?: string) {
         .single();
 
       if (err) throw new Error(err.message);
+      if (yearId) expensesCache.delete(yearId); // invalidate cache so next fetch is fresh
       await fetchExpenses();
       return (data as { id: string }).id;
     },
-    [user, profile, fetchExpenses]
+    [user, profile, yearId, fetchExpenses]
   );
 
   const updateExpense = useCallback(
@@ -168,18 +180,24 @@ export function useExpenses(yearId?: string) {
 
       const { error: err } = await supabase.from('expenses').update(updates).eq('id', id);
       if (err) throw new Error(err.message);
+      if (yearId) expensesCache.delete(yearId); // invalidate cache
       await fetchExpenses();
     },
-    [user, profile, fetchExpenses]
+    [user, profile, yearId, fetchExpenses]
   );
 
   const deleteExpense = useCallback(
     async (id: string): Promise<void> => {
       const { error: err } = await supabase.from('expenses').delete().eq('id', id);
       if (err) throw new Error(err.message);
-      setExpenses(prev => prev.filter(e => e.id !== id));
+      if (yearId) expensesCache.delete(yearId); // invalidate cache
+      setExpenses(prev => {
+        const updated = prev.filter(e => e.id !== id);
+        if (yearId) expensesCache.set(yearId, updated);
+        return updated;
+      });
     },
-    []
+    [yearId]
   );
 
   const addAttachment = useCallback(

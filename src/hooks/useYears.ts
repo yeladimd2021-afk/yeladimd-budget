@@ -29,15 +29,20 @@ function mapYear(row: YearRow): BudgetYear {
   };
 }
 
+// Module-level cache — survives component unmounts so navigating back is instant
+let yearsCache: BudgetYear[] | null = null;
+
 export function useYears() {
   const { user } = useAuth();
-  const [years, setYears] = useState<BudgetYear[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Start with cached data so the page renders immediately on re-visit
+  const [years, setYears] = useState<BudgetYear[]>(yearsCache ?? []);
+  const [loading, setLoading] = useState(yearsCache === null);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchYears = useCallback(async () => {
     if (!user) { setLoading(false); return; }
-    setLoading(true);
+    // Only show spinner when there is no cached data yet
+    if (yearsCache === null) setLoading(true);
     const { data, error: err } = await supabase
       .from('years')
       .select('*')
@@ -46,7 +51,9 @@ export function useYears() {
     if (err) {
       setError(new Error(err.message));
     } else {
-      setYears((data as YearRow[]).map(mapYear));
+      const mapped = (data as YearRow[]).map(mapYear);
+      yearsCache = mapped;
+      setYears(mapped);
       setError(null);
     }
     setLoading(false);
