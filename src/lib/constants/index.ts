@@ -23,20 +23,19 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
 };
 
 export const PAYMENT_METHODS: PaymentMethod[] = [
-  'העברה בנקאית',
+  'פייבוקס',
   'מזומן',
-  'כרטיס אשראי',
+  'העברה בנקאית',
   "צ'ק",
-  'אחר',
-  'הוחזר לתקציב המחלקתי',
-  'הוחזר למשלם',
-  'הוחזר בפייבוקס',
+  'ישירות תקציב מחלקה',
 ];
 
 export const REIMBURSEMENT_STATUSES: ReimbursementStatus[] = [
+  'לא הוחזר',
   'ממתין',
-  'הוחזר',
   'לא רלוונטי',
+  'הוחזר בפייבוקס',
+  'הוחזר בהעברה בנקאית',
 ];
 
 export const DEFAULT_CATEGORIES = [

@@ -21,18 +21,21 @@ const schema = z.object({
   date: z.string().min(1, 'חובה לבחור תאריך'),
   paidBy: z.string().min(2, 'חובה להזין שם משלם'),
   paymentMethod: z.enum([
-    'העברה בנקאית',
+    'פייבוקס',
     'מזומן',
-    'כרטיס אשראי',
+    'העברה בנקאית',
     "צ'ק",
-    'אחר',
-    'הוחזר לתקציב המחלקתי',
-    'הוחזר למשלם',
-    'הוחזר בפייבוקס',
+    'ישירות תקציב מחלקה',
   ]),
   vendor: z.string().optional().default(''),
   invoiceNumber: z.string().optional().default(''),
-  reimbursementStatus: z.enum(['ממתין', 'הוחזר', 'לא רלוונטי']),
+  reimbursementStatus: z.enum([
+    'לא הוחזר',
+    'ממתין',
+    'לא רלוונטי',
+    'הוחזר בפייבוקס',
+    'הוחזר בהעברה בנקאית',
+  ]),
   reimbursementDate: z.string().optional().default(''),
   returnDateToPayer: z.string().optional().default(''),
   returnDateToBudget: z.string().optional().default(''),
@@ -86,10 +89,10 @@ export function ExpenseForm({
       amount: defaultValues?.amount ?? ('' as unknown as number),
       date: defaultValues?.date || new Date().toISOString().split('T')[0],
       paidBy: defaultValues?.paidBy || '',
-      paymentMethod: defaultValues?.paymentMethod || 'העברה בנקאית',
+      paymentMethod: defaultValues?.paymentMethod || 'פייבוקס',
       vendor: defaultValues?.vendor || '',
       invoiceNumber: defaultValues?.invoiceNumber || '',
-      reimbursementStatus: defaultValues?.reimbursementStatus || 'לא רלוונטי',
+      reimbursementStatus: defaultValues?.reimbursementStatus || 'לא הוחזר',
       reimbursementDate: defaultValues?.reimbursementDate || '',
       returnDateToPayer: defaultValues?.returnDateToPayer || '',
       returnDateToBudget: defaultValues?.returnDateToBudget || '',
@@ -207,7 +210,7 @@ export function ExpenseForm({
           error={errors.reimbursementStatus?.message}
           {...register('reimbursementStatus')}
         />
-        {reimbStatus === 'הוחזר' && (
+        {(reimbStatus === 'הוחזר בפייבוקס' || reimbStatus === 'הוחזר בהעברה בנקאית') && (
           <Input
             label="תאריך החזר"
             type="date"
