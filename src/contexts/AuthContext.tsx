@@ -42,14 +42,6 @@ function mapProfile(row: UserRow): UserProfile {
   };
 }
 
-// Wraps a promise with a timeout — if it takes too long, resolves to null
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
-  return Promise.race([
-    promise,
-    new Promise<null>(resolve => setTimeout(() => resolve(null), ms)),
-  ]);
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -58,10 +50,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = useCallback(async (uid: string): Promise<UserProfile | null> => {
     try {
-      const query = supabase.from('users').select('*').eq('id', uid).single();
-      const result = await withTimeout(Promise.resolve(query), 5000);
-      if (!result || result.error || !result.data) return null;
-      return mapProfile(result.data as UserRow);
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', uid)
+        .single();
+      if (error || !data) return null;
+      return mapProfile(data as UserRow);
     } catch {
       return null;
     }
