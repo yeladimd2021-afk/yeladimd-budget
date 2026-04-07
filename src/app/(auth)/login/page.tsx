@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/Input';
@@ -8,48 +8,40 @@ import { Button } from '@/components/ui/Button';
 import { Building2, Lock, Mail } from 'lucide-react';
 
 export default function LoginPage() {
-  const { signIn, user, profile, loading: authLoading } = useAuth();
+  const { signIn, user, loading } = useAuth();
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError]       = useState('');
 
-  // Only redirect when auth is fully resolved AND profile exists.
-  // Checking profile (not just user) prevents a redirect loop when the
-  // user is authenticated but has no row in public.users.
-  React.useEffect(() => {
-    if (!authLoading && user && profile) router.replace('/dashboard');
-  }, [user, profile, authLoading, router]);
+  // Redirect once auth is confirmed and user is already logged in.
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace('/dashboard');
+    }
+  }, [user, loading, router]);
 
-  const getHebrewError = (code: string): string => {
-    const errors: Record<string, string> = {
-      'auth/user-not-found': 'משתמש לא נמצא',
-      'auth/wrong-password': 'סיסמה שגויה',
-      'auth/invalid-email': 'כתובת אימייל לא תקינה',
-      'auth/user-disabled': 'חשבון זה מושבת',
-      'auth/too-many-requests': 'יותר מדי ניסיונות. נסה שוב מאוחר יותר',
-      'auth/invalid-credential': 'אימייל או סיסמה שגויים',
-    };
-    return errors[code] || 'שגיאת התחברות. נסה שוב';
+  const getHebrewError = (msg: string): string => {
+    if (msg.includes('Invalid login') || msg.includes('invalid_credentials')) return 'אימייל או סיסמה שגויים';
+    if (msg.includes('Email not confirmed')) return 'האימייל לא אומת';
+    if (msg.includes('Too many requests'))   return 'יותר מדי ניסיונות, נסי שוב מאוחר יותר';
+    if (msg.includes('disabled'))            return 'החשבון מושבת';
+    return 'שגיאת התחברות, נסי שוב';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError('יש למלא אימייל וסיסמה');
-      return;
-    }
-    setLoading(true);
+    if (!email || !password) { setError('יש למלא אימייל וסיסמה'); return; }
+    setSubmitting(true);
     setError('');
     try {
       await signIn(email, password);
       router.replace('/dashboard');
     } catch (err: unknown) {
-      const code = (err as { code?: string }).code || '';
-      setError(getHebrewError(code));
+      setError(getHebrewError((err as Error).message ?? ''));
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -75,7 +67,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <Input
               label="אימייל"
               type="email"
@@ -83,7 +75,6 @@ export default function LoginPage() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               icon={<Mail className="h-4 w-4" />}
-              required
               autoComplete="email"
               autoFocus
             />
@@ -94,15 +85,9 @@ export default function LoginPage() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               icon={<Lock className="h-4 w-4" />}
-              required
               autoComplete="current-password"
             />
-            <Button
-              type="submit"
-              loading={loading}
-              className="w-full"
-              size="lg"
-            >
+            <Button type="submit" loading={submitting} className="w-full" size="lg">
               כניסה
             </Button>
           </form>

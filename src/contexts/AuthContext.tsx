@@ -9,6 +9,7 @@ interface AuthContextValue {
   user: User | null;
   profile: UserProfile | null;
   session: Session | null;
+  /** True only while the initial auth state is being determined (< 500ms). */
   loading: boolean;
   isAdmin: boolean;
   isEditor: boolean;
@@ -19,7 +20,6 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// ─── Row shape from public.users table ───────────────────────────────────────
 interface UserRow {
   id: string;
   email: string;
@@ -43,109 +43,94 @@ function mapProfile(row: UserRow): UserProfile {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser]       = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  // loading is true only while the INITIAL auth state is unknown.
+  // It resolves from localStorage — no network call needed.
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = useCallback(async (uid: string): Promise<UserProfile | null> => {
+  // ── Load profile row from public.users (runs in background) ────────────────
+  const loadProfile = useCallback(async (uid: string) => {
     try {
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', uid)
         .single();
-      if (error || !data) return null;
-      return mapProfile(data as UserRow);
+      if (!error && data) {
+        setProfile(mapProfile(data as UserRow));
+        // fire-and-forget: update last_login_at
+        supabase
+          .from('users')
+          .update({ last_login_at: new Date().toISOString() })
+          .eq('id', uid)
+          .then(() => {});
+      }
     } catch {
-      return null;
-    }
-  }, []);
-
-  const updateLastLogin = useCallback(async (uid: string) => {
-    try {
-      await supabase
-        .from('users')
-        .update({ last_login_at: new Date().toISOString() })
-        .eq('id', uid);
-    } catch {
-      // non-critical, ignore
+      // Profile load failed — user stays authenticated, some features
+      // will be unavailable until profile is loaded.
     }
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
+    let mounted = true;
 
-    // Safety net: never stay loading more than 8 seconds
-    const safetyTimer = setTimeout(() => {
-      if (!cancelled) setLoading(false);
-    }, 8000);
+    // Hard safety net: never stay loading more than 3 seconds
+    const safety = setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, 3000);
 
-    // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
-      if (cancelled) return;
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) {
-        const p = await fetchProfile(s.user.id);
-        if (!cancelled) {
-          setProfile(p);
-          if (p) updateLastLogin(s.user.id);
-        }
-      }
-      if (!cancelled) {
-        clearTimeout(safetyTimer);
-        setLoading(false);
-      }
-    }).catch(() => {
-      if (!cancelled) {
-        clearTimeout(safetyTimer);
-        setLoading(false);
-      }
-    });
-
-    // Listen for auth state changes
+    // onAuthStateChange fires INITIAL_SESSION synchronously from the
+    // locally-stored session — no network round-trip required.
+    // This is the recommended pattern in Supabase JS v2.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, s) => {
-        if (cancelled) return;
-        setSession(s);
-        setUser(s?.user ?? null);
-        if (s?.user) {
-          const p = await fetchProfile(s.user.id);
-          if (!cancelled) {
-            setProfile(p);
-            if (p) updateLastLogin(s.user.id);
-          }
+      (event, sess) => {
+        if (!mounted) return;
+
+        setSession(sess);
+        const currentUser = sess?.user ?? null;
+        setUser(currentUser);
+
+        // Unblock the UI as soon as auth state is known.
+        // Profile loading happens BELOW in the background.
+        clearTimeout(safety);
+        setLoading(false);
+
+        if (currentUser) {
+          // Load profile without awaiting — doesn't block the page.
+          loadProfile(currentUser.id);
         } else {
           setProfile(null);
         }
-        if (!cancelled) setLoading(false);
       }
     );
 
     return () => {
-      cancelled = true;
-      clearTimeout(safetyTimer);
+      mounted = false;
+      clearTimeout(safety);
       subscription.unsubscribe();
     };
-  }, [fetchProfile, updateLastLogin]);
+  }, [loadProfile]);
 
-  const signIn = useCallback(async (email: string, password: string): Promise<void> => {
+  // ── Actions ────────────────────────────────────────────────────────────────
+  const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
   }, []);
 
-  const signOut = useCallback(async (): Promise<void> => {
+  const signOut = useCallback(async () => {
+    setProfile(null);
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   }, []);
 
-  const resetPassword = useCallback(async (email: string): Promise<void> => {
+  const resetPassword = useCallback(async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     if (error) throw error;
   }, []);
 
-  const isAdmin = profile?.role === 'admin';
+  const isAdmin  = profile?.role === 'admin';
   const isEditor = profile?.role === 'admin' || profile?.role === 'editor';
 
   return (

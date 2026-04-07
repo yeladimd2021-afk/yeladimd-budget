@@ -16,24 +16,24 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   const router = useRouter();
 
   useEffect(() => {
-    // Only redirect when auth is fully resolved and there is definitely no user
+    // Redirect to login only once auth state is confirmed and there is no user.
     if (!loading && !user) {
       router.replace('/login');
     }
   }, [user, loading, router]);
 
-  // Still initialising — show loader, do NOT redirect or sign out
+  // Show spinner only while auth state is unknown (typically < 300ms).
   if (loading) return <PageLoader />;
 
-  // No user at all → redirect is already in flight from the effect above
+  // Auth confirmed: no user → redirect is already in flight.
   if (!user) return <PageLoader />;
 
-  // User authenticated but profile not yet fetched (e.g. slow network) → wait
-  if (!profile) return <PageLoader />;
-
-  if (requiredRole) {
-    const roleHierarchy: Record<UserRole, number> = { admin: 3, editor: 2, viewer: 1 };
-    if (roleHierarchy[profile.role] < roleHierarchy[requiredRole]) {
+  // Role check — enforced only once the profile has loaded.
+  // If profile is still null (loading in background), we grant access
+  // optimistically; the check runs again once profile arrives.
+  if (requiredRole && profile) {
+    const hierarchy: Record<UserRole, number> = { admin: 3, editor: 2, viewer: 1 };
+    if (hierarchy[profile.role] < hierarchy[requiredRole]) {
       return (
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
