@@ -12,22 +12,27 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, signOut } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return;
+
+    if (!user) {
       router.replace('/login');
+      return;
     }
-    // If auth is resolved, user exists, but profile is missing → sign-out state; redirect to login
-    if (!loading && user && profile === null) {
-      router.replace('/login');
+
+    // User is authenticated but has no profile row in public.users.
+    // Sign out first to clear the session so the login page won't redirect
+    // back to dashboard → breaking the redirect loop.
+    if (!profile) {
+      signOut().catch(() => {}).finally(() => router.replace('/login'));
     }
-  }, [user, profile, loading, router]);
+  }, [user, profile, loading, router, signOut]);
 
   if (loading) return <PageLoader />;
-  if (!user) return <PageLoader />; // redirect in flight
-  if (!profile) return <PageLoader />; // redirect in flight
+  if (!user || !profile) return <PageLoader />; // redirect already triggered above
 
   if (requiredRole) {
     const roleHierarchy: Record<UserRole, number> = { admin: 3, editor: 2, viewer: 1 };

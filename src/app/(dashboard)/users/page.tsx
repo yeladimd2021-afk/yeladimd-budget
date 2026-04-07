@@ -192,110 +192,113 @@ export default function UsersPage() {
     }
   };
 
-  if (loading) return <SectionLoader />;
-
   return (
     <ProtectedRoute requiredRole="admin">
       <div className="p-4 md:p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">ניהול משתמשים</h1>
-            <p className="text-sm text-slate-500">{users.length} משתמשים רשומים</p>
-          </div>
-          <Button icon={<Plus className="h-4 w-4" />} onClick={() => setShowAdd(true)}>
-            משתמש חדש
-          </Button>
-        </div>
-
-        {/* Role explanation */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {Object.entries(ROLES).map(([role, label]) => (
-            <div key={role} className="bg-white rounded-xl border border-slate-200 p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <RoleBadge role={role as UserRole} />
+        {loading ? (
+          <SectionLoader />
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900">ניהול משתמשים</h1>
+                <p className="text-sm text-slate-500">{users.length} משתמשים רשומים</p>
               </div>
-              <p className="text-xs text-slate-500">
-                {role === 'admin' && 'גישה מלאה, ניהול משתמשים והגדרות'}
-                {role === 'editor' && 'הוספה ועריכה של הוצאות וקבצים'}
-                {role === 'viewer' && 'צפייה בלבד בכל הנתונים'}
-              </p>
+              <Button icon={<Plus className="h-4 w-4" />} onClick={() => setShowAdd(true)}>
+                משתמש חדש
+              </Button>
             </div>
-          ))}
-        </div>
 
-        {/* Users table */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500">משתמש</th>
-                <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500">תפקיד</th>
-                <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 hidden md:table-cell">נוצר</th>
-                <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500">סטטוס</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {users.map(user => (
-                <tr key={user.uid} className="hover:bg-slate-50">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-sm shrink-0">
-                        {user.displayName?.charAt(0) || '?'}
-                      </div>
-                      <div>
-                        <p className="font-medium text-slate-800">{user.displayName}</p>
-                        <p className="text-xs text-slate-400">{user.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <RoleBadge role={user.role} />
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-400 hidden md:table-cell">
-                    {user.createdAt ? formatDateTime(user.createdAt) : '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant={user.isActive ? 'success' : 'default'} dot>
-                      {user.isActive ? 'פעיל' : 'מושבת'}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3">
-                    {user.uid !== profile?.uid && (
-                      <div className="flex items-center gap-1 justify-end">
-                        <button
-                          onClick={() => setEditUser(user)}
-                          className="p-1.5 text-slate-400 hover:text-slate-700 rounded"
-                          title="עריכה"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => setToggleUser(user)}
-                          className={`p-1.5 rounded ${
-                            user.isActive
-                              ? 'text-slate-400 hover:text-red-600'
-                              : 'text-slate-400 hover:text-green-600'
-                          }`}
-                          title={user.isActive ? 'השבת' : 'הפעל'}
-                        >
-                          {user.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
+            {/* Role explanation */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {Object.entries(ROLES).map(([role, label]) => (
+                <div key={role} className="bg-white rounded-xl border border-slate-200 p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <RoleBadge role={role as UserRole} />
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    {role === 'admin' && 'גישה מלאה, ניהול משתמשים והגדרות'}
+                    {role === 'editor' && 'הוספה ועריכה של הוצאות וקבצים'}
+                    {role === 'viewer' && 'צפייה בלבד בכל הנתונים'}
+                  </p>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
 
-        {/* Add User Modal */}
+            {/* Users table */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500">משתמש</th>
+                    <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500">תפקיד</th>
+                    <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 hidden md:table-cell">נוצר</th>
+                    <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500">סטטוס</th>
+                    <th className="px-4 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {users.map(user => (
+                    <tr key={user.uid} className="hover:bg-slate-50">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-sm shrink-0">
+                            {user.displayName?.charAt(0) || '?'}
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-800">{user.displayName}</p>
+                            <p className="text-xs text-slate-400">{user.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <RoleBadge role={user.role} />
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-400 hidden md:table-cell">
+                        {user.createdAt ? formatDateTime(user.createdAt) : '—'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant={user.isActive ? 'success' : 'default'} dot>
+                          {user.isActive ? 'פעיל' : 'מושבת'}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        {user.uid !== profile?.uid && (
+                          <div className="flex items-center gap-1 justify-end">
+                            <button
+                              onClick={() => setEditUser(user)}
+                              className="p-1.5 text-slate-400 hover:text-slate-700 rounded"
+                              title="עריכה"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => setToggleUser(user)}
+                              className={`p-1.5 rounded ${
+                                user.isActive
+                                  ? 'text-slate-400 hover:text-red-600'
+                                  : 'text-slate-400 hover:text-green-600'
+                              }`}
+                              title={user.isActive ? 'השבת' : 'הפעל'}
+                            >
+                              {user.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        {/* Modals — always rendered so they can animate out */}
         <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="הוסף משתמש חדש">
           <AddUserForm onSubmit={handleCreate} onCancel={() => setShowAdd(false)} loading={submitting} />
         </Modal>
 
-        {/* Edit User Modal */}
         <Modal isOpen={!!editUser} onClose={() => setEditUser(null)} title="עריכת משתמש">
           {editUser && (
             <EditUserForm
@@ -307,7 +310,6 @@ export default function UsersPage() {
           )}
         </Modal>
 
-        {/* Toggle Status Confirm */}
         <ConfirmModal
           isOpen={!!toggleUser}
           onClose={() => setToggleUser(null)}

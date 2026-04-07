@@ -8,17 +8,19 @@ import { Button } from '@/components/ui/Button';
 import { Building2, Lock, Mail } from 'lucide-react';
 
 export default function LoginPage() {
-  const { signIn, user } = useAuth();
+  const { signIn, user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // If already logged in, redirect
+  // Only redirect when auth is fully resolved AND profile exists.
+  // Checking profile (not just user) prevents a redirect loop when the
+  // user is authenticated but has no row in public.users.
   React.useEffect(() => {
-    if (user) router.replace('/dashboard');
-  }, [user, router]);
+    if (!authLoading && user && profile) router.replace('/dashboard');
+  }, [user, profile, authLoading, router]);
 
   const getHebrewError = (code: string): string => {
     const errors: Record<string, string> = {
